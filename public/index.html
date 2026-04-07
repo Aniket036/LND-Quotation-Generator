@@ -129,8 +129,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .q-info-label{color:#666;min-width:82px;flex-shrink:0;}
 .q-info-value{color:#111;font-weight:500;}
 .q-customer-name{font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:5px;}
-.q-table-wrapper{border:1.5px solid #1a1a2e;border-bottom:none;}
-.q-table{width:100%;border-collapse:collapse;font-size:10px;}
+.q-table-wrapper{border:1.5px solid #1a1a2e;border-bottom:none;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.q-table{width:100%;min-width:520px;border-collapse:collapse;font-size:10px;}
 .q-table th{background:#dedcdc;color:#1c1c1c;padding:7px 8px;text-align:left;
   font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
 .q-table th:nth-child(3),.q-table th:nth-child(4),.q-table th:nth-child(5),
@@ -485,7 +485,9 @@ function renderProductForms(){
   container.innerHTML='';
   const cats=getCategories();
   productItems.forEach((item,idx)=>{
-    const sp=item.unitPrice*(1-item.discount/100), lt=calcItemTotal(item);
+    const sp=item.unitPrice*(1-item.discount/100);
+    const custTotal=item.customizations.reduce((acc,c)=>acc+c.unitPrice*(1-c.discount/100),0);
+    const lt=sp*item.units+custTotal;
     const models=item.category?getModels(item.category):[];
     const isChair=isChairCategory(item.category);
 
@@ -836,9 +838,13 @@ async function buildPDFDoc(){
   function ln(x1,y1,x2,y2,c=DARK,lw=0.3){pdf.setDrawColor(...c);pdf.setLineWidth(lw);pdf.line(x1,y1,x2,y2);}
   function fillRect(x,yy,w,hh,c){pdf.setFillColor(...c);pdf.rect(x,yy,w,hh,'F');}
   function strokeRect(x,yy,w,hh,c,lw=0.4){pdf.setDrawColor(...c);pdf.setLineWidth(lw);pdf.rect(x,yy,w,hh,'S');}
-  let inProductTable=false;
-  function checkPage(need){if(y+need>PH-14){pdf.addPage();y=MT;if(inProductTable)drawTableHeader();}}
-
+  let tableActive=false; // declared before checkPage
+  function checkPage(need){
+  if(y+need>PH-14){
+    pdf.addPage(); y=MT;
+    if(tableActive) drawTableHeader(); // only draw header if mid-table
+    }
+  }
   // ── HEADER ────────────────────────────────────────────────────────────────
   const LOGO_ASPECT=1.0; // 1280x1280 square
   const LOGO_MAX_H=22, logoH=LOGO_MAX_H, logoW=LOGO_MAX_H*LOGO_ASPECT;
@@ -902,7 +908,7 @@ async function buildPDFDoc(){
     y+=8;
   }
   drawTableHeader();
-  inProductTable=true;
+  tableActive=true;
 
   let rowIdx=0;
   productItems.forEach((item)=>{
@@ -981,7 +987,7 @@ async function buildPDFDoc(){
     rowIdx++;
   });
   ln(ML,y,ML+CW,y,NAVY,0.2);
-  inProductTable=false;
+  tableActive=false;
 
   // ── TOTALS ─────────────────────────────────────────────────────────────────
   const NORMAL_RH = 7;   // normal row height
