@@ -189,6 +189,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 @media(max-width:900px){
   .app-body{grid-template-columns:1fr;}
   .form-panel{position:static;height:auto;}
+  .preview-panel{padding:10px;}
+  .q-table-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .q-table{min-width:520px;}
+  #quotation-preview{font-size:9px;}
 }
 
 .q-words-row{
@@ -481,7 +485,7 @@ function renderProductForms(){
   container.innerHTML='';
   const cats=getCategories();
   productItems.forEach((item,idx)=>{
-    const sp=item.unitPrice*(1-item.discount/100), lt=sp*item.units;
+    const sp=item.unitPrice*(1-item.discount/100), lt=calcItemTotal(item);
     const models=item.category?getModels(item.category):[];
     const isChair=isChairCategory(item.category);
 
@@ -567,7 +571,7 @@ function renderProductForms(){
             </div>
           </div>
         </div>
-        <div class="calc-display">Special Price: <span>₹${fmt(sp)}</span> &nbsp;|&nbsp; Line Total: <span>₹${fmt(lt)}</span></div>
+        <div class="calc-display">Special Price: <span>₹${fmt(sp)}</span> &nbsp;|&nbsp; Total (incl. customizations): <span>₹${fmt(lt)}</span></div>
         ${isChair?`
         <div class="form-grid">
           <div class="field"><label>Seat Dimension</label>
@@ -626,7 +630,7 @@ function handleImageUpload(input){
 function clearCustomImage(itemId){const item=productItems.find(p=>p.id===itemId);if(!item)return;item.customImageB64=null;renderProductForms();autoPreview();}
 function onCategoryChange(id,cat){const item=productItems.find(p=>p.id===id);if(!item)return;item.category=cat;item.model='';item.unitPrice=0;item.imageURL='';item.customImageB64=null;item.customizations=[];renderProductForms();autoPreview();}
 function onModelChange(id,modelName){const item=productItems.find(p=>p.id===id);if(!item||!modelName)return;const prod=lookup(item.category,modelName);if(prod){item.model=prod.model;item.unitPrice=prod.price;item.imageURL=prod.image;}else{item.model=modelName;}item.customImageB64=null;renderProductForms();autoPreview();}
-function updateItemField(id,field,val){const item=productItems.find(p=>p.id===id);if(!item)return;if(['units','unitPrice','discount'].includes(field))item[field]=parseFloat(val)||0;else item[field]=val;autoPreview();}
+function updateItemField(id,field,val){const item=productItems.find(p=>p.id===id);if(!item)return;if(['units','unitPrice','discount'].includes(field))item[field]=parseFloat(val)||0;else item[field]=val;if(['units','unitPrice','discount'].includes(field))renderProductForms();autoPreview();}
 
 // ── CLEAR ─────────────────────────────────────────────────────────────────────
 function clearForm(){
@@ -832,7 +836,8 @@ async function buildPDFDoc(){
   function ln(x1,y1,x2,y2,c=DARK,lw=0.3){pdf.setDrawColor(...c);pdf.setLineWidth(lw);pdf.line(x1,y1,x2,y2);}
   function fillRect(x,yy,w,hh,c){pdf.setFillColor(...c);pdf.rect(x,yy,w,hh,'F');}
   function strokeRect(x,yy,w,hh,c,lw=0.4){pdf.setDrawColor(...c);pdf.setLineWidth(lw);pdf.rect(x,yy,w,hh,'S');}
-  function checkPage(need){if(y+need>PH-14){pdf.addPage();y=MT;drawTableHeader();}}
+  let inProductTable=false;
+  function checkPage(need){if(y+need>PH-14){pdf.addPage();y=MT;if(inProductTable)drawTableHeader();}}
 
   // ── HEADER ────────────────────────────────────────────────────────────────
   const LOGO_ASPECT=1.0; // 1280x1280 square
@@ -897,6 +902,7 @@ async function buildPDFDoc(){
     y+=8;
   }
   drawTableHeader();
+  inProductTable=true;
 
   let rowIdx=0;
   productItems.forEach((item)=>{
@@ -975,6 +981,7 @@ async function buildPDFDoc(){
     rowIdx++;
   });
   ln(ML,y,ML+CW,y,NAVY,0.2);
+  inProductTable=false;
 
   // ── TOTALS ─────────────────────────────────────────────────────────────────
   const NORMAL_RH = 7;   // normal row height
