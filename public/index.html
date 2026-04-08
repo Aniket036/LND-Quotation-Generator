@@ -382,15 +382,19 @@ document.addEventListener('DOMContentLoaded', () => {
 function v(id)  { return document.getElementById(id)?.value?.trim()||''; }
 function h(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt(n) {
-  //n = Math.round(Number(n));
+  n = Number(n);
   if(isNaN(n)) return '0';
-  const s = n.toString();
+  const neg = n < 0;
+  const [intPart, decPart] = Math.abs(n).toFixed(2).split('.');
+  const s = intPart;
   let r = s.length<=3 ? s : (() => {
     const last3=s.slice(-3), rest=s.slice(0,-3), groups=[];
     for(let i=rest.length;i>0;i-=2) groups.unshift(rest.slice(Math.max(0,i-2),i));
     return groups.join(',')+','+last3;
   })();
-  return (n<0?'-':'')+r;
+  // Only show decimals if non-zero
+  const dec = decPart && decPart !== '00' ? '.'+decPart : '';
+  return (neg?'-':'')+r+dec;
 }
 
 function toast(msg,ms=2800){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),ms);}
